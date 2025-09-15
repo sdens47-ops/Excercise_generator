@@ -1,5 +1,7 @@
 // Логика инструмента I Spy (глобальные функции и данные)
+// Отвечает за генерацию поля с разбросанными предметами и подписями для подсчёта
 
+// Список предметов для I Spy: ключ, подпись, цвет и генератор SVG
 const SPY_ITEMS = [
   { key: 'table',   name: 'table',   color: '#f59e0b', svg: svgTable },
   { key: 'chair',   name: 'chair',   color: '#10b981', svg: svgChair },
@@ -9,14 +11,17 @@ const SPY_ITEMS = [
   { key: 'ruler',   name: 'ruler',   color: '#eab308', svg: svgRuler },
 ];
 
+// Диапазон случайного количества предметов по умолчанию
 const COUNT_RANGE = { min: 4, max: 10 };
 
+// Создаёт объект вида { key: count } со случайными значениями в пределах COUNT_RANGE
 function spyRandomCounts() {
   const map = {};
   SPY_ITEMS.forEach(it => { map[it.key] = randomInt(COUNT_RANGE.min, COUNT_RANGE.max); });
   return map;
 }
 
+// Рендерит панель настроек (инпуты чисел) для каждого предмета
 function spyRenderSettings(counts) {
   const settings = document.getElementById('spy-settings');
   settings.innerHTML = '';
@@ -33,6 +38,7 @@ function spyRenderSettings(counts) {
   });
 }
 
+// Считывает текущие значения количеств из DOM-настроек
 function spyGetCountsFromSettings() {
   const map = {};
   for (const item of SPY_ITEMS) {
@@ -44,6 +50,7 @@ function spyGetCountsFromSettings() {
   return map;
 }
 
+// Рисует нижнюю линейку с мини-иконками и линиями для записей
 function spyBuildFooter(counts) {
   const footer = document.getElementById('spy-footer');
   footer.innerHTML = '';
@@ -59,6 +66,7 @@ function spyBuildFooter(counts) {
   });
 }
 
+// Главный рендер I Spy: строит сетку, раскладывает иконки, синхронизирует настройки
 function renderSpy(counts) {
   const playfield = document.getElementById('spy-playfield');
   playfield.innerHTML = '';
@@ -76,10 +84,12 @@ function renderSpy(counts) {
 
   spyBuildFooter(counts);
 
+  // Плоский список всех экземпляров (по количеству на каждый предмет)
   const instances = SPY_ITEMS.flatMap(item => Array.from({ length: counts[item.key] || 0 }, () => ({ item })));
   shuffle(instances);
 
   const total = instances.length;
+  // Приблизительно квадратная таблица
   const cols = Math.max(1, Math.ceil(Math.sqrt(total)));
   const rows = Math.max(1, Math.ceil(total / cols));
 
@@ -95,6 +105,7 @@ function renderSpy(counts) {
         const { item } = instances[index++];
         const wrapper = document.createElement('div');
         wrapper.className = 'cell-icon';
+        // Небольшой поворот для живости раскладки
         const deg = choice([0, 0, 0, 5, -5]);
         wrapper.style.transform = `rotate(${deg}deg)`;
         wrapper.innerHTML = item.svg(item.color);

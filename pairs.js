@@ -1,5 +1,7 @@
 // Логика инструмента карточек Singular ↔ Plural (глобальные функции и данные)
+// Отвечает за 6 пар карточек: слева единственное число, справа — сетка множественного
 
+// Список предметов для карточек: артикль для singular, цвет и SVG
 const PAIR_ITEMS = [
   { key: 'chair',  name: 'chair',  article: 'a',  color: '#10b981', svg: svgChair },
   { key: 'table',  name: 'table',  article: 'a',  color: '#f59e0b', svg: svgTable },
@@ -9,11 +11,15 @@ const PAIR_ITEMS = [
   { key: 'eraser', name: 'eraser', article: 'an', color: '#ec4899', svg: svgEraser },
 ];
 
+// Значения по умолчанию для правых карточек (сколько иконок рисовать)
 const PAIRS_DEFAULT_COUNTS = { chair: 5, table: 2, pen: 4, pencil: 7, ruler: 3, eraser: 8 };
 
+// Формирует подпись для левой карточки (singular)
 function pairsSingularLabel(item) { return `${item.article} ${item.name}`; }
+// Формирует подпись для правой карточки (plural) с простым добавлением "s"
 function pairsPluralLabel(item, count) { return `${count} ${item.name}${count === 1 ? '' : 's'}`; }
 
+// Рисует панель настроек: по инпуту на каждый предмет
 function pairsRenderSettings(counts) {
   const settings = document.getElementById('pairs-settings');
   settings.innerHTML = '';
@@ -30,6 +36,7 @@ function pairsRenderSettings(counts) {
   });
 }
 
+// Считывает текущие количества из панели настроек
 function pairsGetCountsFromSettings() {
   const map = {};
   for (const item of PAIR_ITEMS) {
@@ -41,6 +48,7 @@ function pairsGetCountsFromSettings() {
   return map;
 }
 
+// Главный рендер: синхронизирует настройки и рисует 6 пар карточек
 function renderPairs(counts) {
   const pairsContainer = document.getElementById('pairs');
   const settings = document.getElementById('pairs-settings');
@@ -65,7 +73,7 @@ function renderPairs(counts) {
     `;
     const right = document.createElement('article');
     right.className = 'card';
-    const grid = document.createElement('div');
+    const grid = document.createElement('div'); // сетка мини-иконок (plural)
     grid.className = 'visual grid';
     for (let i = 0; i < count; i++) {
       const cell = document.createElement('div');
