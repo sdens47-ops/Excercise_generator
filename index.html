@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Exercise Generator</title>
+  <style>
+    /* ===== Тема и базовые переменные ===== */
+    :root {
+      --bg: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --teal: #14b8a6;
+      --page-margin: 12mm;
+    }
+
+    /* ===== Базовая раскладка страницы ===== */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+      line-height: 1.35;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      padding: var(--page-margin);
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      gap: 8mm;
+      background: var(--bg);
+    }
+
+    header h1 {
+      margin: 0 0 2mm 0;
+      font-size: 20pt;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .tool-title { margin: 0 0 2mm 0; font-size: 14pt; }
+
+    .controls {
+      display: flex;
+      gap: 6mm;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .controls button, .controls select {
+      appearance: none;
+      border: 1px solid #e5e7eb;
+      border-radius: 10mm;
+      padding: 4mm 8mm;
+      font-size: 11pt;
+      cursor: pointer;
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 1mm 2mm rgba(0,0,0,0.05);
+    }
+    .controls button.primary { color: #fff; background: var(--primary); border-color: var(--primary); }
+    .controls button.secondary { color: #fff; background: var(--teal); border-color: var(--teal); }
+
+    .tool {
+      display: none;
+    }
+    .tool.active { display: block; }
+
+    /* ===== Стили инструмента I Spy ===== */
+    .sheet { position: relative; border: 1px dashed #e5e7eb; border-radius: 3mm; padding: 4mm; overflow: hidden; }
+    .sheet { background:
+      radial-gradient( circle at 20% 10%, rgba(37,99,235,0.06), transparent 45% ),
+      radial-gradient( circle at 80% 30%, rgba(139,92,246,0.07), transparent 45% ),
+      radial-gradient( circle at 30% 85%, rgba(20,184,166,0.06), transparent 45% ); }
+    .playfield { position: relative; width: 100%; height: 0; padding-bottom: 65%; background: #ffffffcc; border-radius: 2mm; overflow: hidden; }
+    .settings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm 10mm; align-items: center; }
+    .cfg-item { display: grid; grid-template-columns: 12mm 1fr 24mm; gap: 3mm; align-items: center; }
+    .cfg-item input[type="number"] { width: 24mm; padding: 2mm 2mm; font-size: 11pt; }
+    .footer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm 10mm; align-items: center; }
+    .count-item { display: grid; grid-template-columns: 12mm 1fr 28mm; gap: 3mm; align-items: center; }
+    .count-item .mini { width: 12mm; height: 12mm; display: inline-block; }
+    .line { border-bottom: 1px solid #94a3b8; height: 0; }
+    .play-table { position: absolute; inset: 0; width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
+    .play-table td { border: 1px solid #e5e7eb; text-align: center; vertical-align: middle; padding: 0; }
+    .cell-icon { width: 100%; height: 100%; display: grid; place-items: center; }
+    .cell-icon svg { width: 78%; height: auto; display: block; }
+
+    /* ===== Стили инструмента Карточки (Singular/Plural) ===== */
+    .pairs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(3, auto);
+      gap: 6mm;
+      justify-items: stretch;
+      align-items: stretch;
+    }
+    .pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3mm;
+      align-items: stretch;
+      height: 100%;
+    }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 2mm;
+      background: #ffffff;
+      box-shadow: 0 1mm 2mm rgba(0,0,0,0.06);
+      display: grid;
+      grid-template-rows: 1fr auto;
+      overflow: hidden;
+      min-height: 36mm;
+      max-height: 44mm;
+    }
+    .visual {
+      display: grid;
+      place-items: center;
+      padding: 3mm;
+      min-height: 22mm;
+      background:
+        radial-gradient( circle at 20% 10%, rgba(37,99,235,0.06), transparent 45% ),
+        radial-gradient( circle at 80% 30%, rgba(139,92,246,0.07), transparent 45% ),
+        radial-gradient( circle at 30% 85%, rgba(20,184,166,0.06), transparent 45% );
+      /* Добавлено ограничение для предотвращения переполнения */
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    /* Исправление для сетки мини-иконок, чтобы не вылезали за край */
+    .visual.grid {
+      --cell: 8mm;
+      --gap: 1.2mm;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(var(--cell), 1fr));
+      gap: var(--gap);
+      width: 100%;
+      max-height: 100%;
+      overflow-y: auto;
+      justify-items: center;
+      align-items: center;
+      box-sizing: border-box;
+      padding: 1.5mm;
+    }
+    .visual.grid .mini svg {
+      width: 100%;
+      height: auto;
+      max-width: 8mm;
+      max-height: 8mm;
+      display: block;
+    }
+    .single svg { width: 48%; height: auto; display: block; }
+    .grid {
+      --cell: 10mm;
+      --gap: 2mm;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--cell), 1fr));
+      gap: var(--gap);
+      width: 100%;
+      padding: 2mm;
+    }
+    .grid .mini svg { width: 100%; height: auto; display: block; }
+    .label {
+      padding: 2mm 3mm;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 10pt;
+      font-weight: 600;
+    }
+
+    /* ===== Печать (A4) ===== */
+    @media print {
+      @page { size: A4 portrait; margin: var(--page-margin); }
+      body { background: #fff; }
+      .controls, .settings.global { display: none !important; }
+      .page { width: auto; min-height: auto; padding: 0; gap: 8mm; }
+      .pairs { gap: 4mm; }
+      .card { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>Exercise Generator</h1>
+      <p>Choose a tool and generate an exercise for printing.</p>
+    </header>
+
+    <div class="controls settings global">
+      <label for="tool">Tool:</label>
+      <select id="tool">
+        <option value="spy">I Spy</option>
+        <option value="pairs">Singular ↔ Plural</option>
+      </select>
+      <button id="regen" class="primary">Generate</button>
+      <button id="print" class="secondary">Print</button>
+    </div>
+
+    <!-- I SPY TOOL -->
+    <section id="tool-spy" class="tool">
+      <h2 class="tool-title">I Spy: find the items</h2>
+      <div id="spy-settings" class="settings" aria-label="Item count settings"></div>
+      <section class="sheet">
+        <div id="spy-playfield" class="playfield" aria-label="Playfield with items"></div>
+      </section>
+      <section id="spy-footer" class="footer" aria-label="Lines to write found counts"></section>
+    </section>
+
+    <!-- PAIRS TOOL -->
+    <section id="tool-pairs" class="tool">
+      <h2 class="tool-title">Singular ↔ Plural — practice cards</h2>
+      <div id="pairs-settings" class="settings" aria-label="Pairs count settings"></div>
+      <section id="pairs" class="pairs" aria-label="Singular and plural pairs"></section>
+    </section>
+  </div>
+
+  <script src="svg_items.js"></script>
+  <script>
+    // ===== Общие вспомогательные функции =====
+    // shuffle: перетасовывает массив (Фишер-Йетс)
+    function shuffle(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
+    // choice: выбирает случайный элемент массива
+    function choice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    // randomInt: целое в диапазоне [min, max]
+    function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    // Элементы управления верхней панели
+    const selectTool = document.getElementById('tool');
+    const btnRegen = document.getElementById('regen');
+    const btnPrint = document.getElementById('print');
+
+    // Переключает видимость активного инструмента
+    function switchTool(value) {
+      document.querySelectorAll('.tool').forEach(t => t.classList.remove('active'));
+      const id = value === 'pairs' ? 'tool-pairs' : 'tool-spy';
+      document.getElementById(id).classList.add('active');
+    }
+
+    selectTool.addEventListener('change', () => {
+      switchTool(selectTool.value);
+      regenerate();
+    });
+
+    btnPrint.addEventListener('click', () => window.print());
+    btnRegen.addEventListener('click', regenerate);
+
+    // Генерация содержимого для активного инструмента
+    function regenerate() {
+      if (selectTool.value === 'pairs') renderPairs();
+      else renderSpy();
+    }
+
+    // ==================== I SPY ====================
+    // Конфигурация предметов I Spy: ключ, подпись, цвет и генератор SVG
+    const SPY_ITEMS = [
+      { key: 'table',   name: 'table',   color: '#f59e0b', svg: svgTable },
+      { key: 'chair',   name: 'chair',   color: '#10b981', svg: svgChair },
+      { key: 'pencil',  name: 'pencil',  color: '#ef4444', svg: svgPencil },
+      { key: 'eraser',  name: 'eraser',  color: '#ec4899', svg: svgEraser },
+      { key: 'pen',     name: 'pen',     color: '#3b82f6', svg: svgPen },
+      { key: 'ruler',   name: 'ruler',   color: '#eab308', svg: svgRuler },
+    ];
+
+    // Диапазон случайных количеств по умолчанию
+    const COUNT_RANGE = { min: 4, max: 10 };
+
+    // Создаёт объект случайных количеств по ключам предметов
+    function spyRandomCounts() {
+      const map = {};
+      SPY_ITEMS.forEach(it => { map[it.key] = randomInt(COUNT_RANGE.min, COUNT_RANGE.max); });
+      return map;
+    }
+
+    // Рендерит настройки (инпуты количеств) для I Spy
+    function spyRenderSettings(counts) {
+      const settings = document.getElementById('spy-settings');
+      settings.innerHTML = '';
+      SPY_ITEMS.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'cfg-item';
+        const value = counts[item.key] ?? COUNT_RANGE.min;
+        el.innerHTML = `
+          <span class="mini" aria-hidden="true">${item.svg(item.color)}</span>
+          <label class="label" for="count-${item.key}">${capitalize(item.name)}</label>
+          <input id="count-${item.key}" type="number" min="0" max="99" value="${value}" />
+        `;
+        settings.appendChild(el);
+      });
+    }
+
+    // Считывает значения количеств из DOM-настроек I Spy
+    function spyGetCountsFromSettings() {
+      const map = {};
+      for (const item of SPY_ITEMS) {
+        const input = document.getElementById(`count-${item.key}`);
+        if (!input) return null;
+        const v = parseInt(input.value, 10);
+        map[item.key] = Number.isFinite(v) && v >= 0 ? v : 0;
+      }
+      return map;
+    }
+
+    // Нижний блок-линейка для записи результатов (подписи предметов)
+    function spyBuildFooter(counts) {
+      const footer = document.getElementById('spy-footer');
+      footer.innerHTML = '';
+      SPY_ITEMS.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'count-item';
+        el.innerHTML = `
+          <span class="mini" aria-hidden="true">${item.svg(item.color)}</span>
+          <span class="label">${capitalize(item.name)}</span>
+          <span class="line" aria-label="Write the number here"></span>
+        `;
+        footer.appendChild(el);
+      });
+    }
+
+    // Основной рендер I Spy: создаёт таблицу с распределёнными иконками
+    function renderSpy(counts) {
+      const playfield = document.getElementById('spy-playfield');
+      playfield.innerHTML = '';
+
+      if (!counts) counts = spyGetCountsFromSettings() || spyRandomCounts();
+
+      // Ensure settings exist and reflect counts
+      const settings = document.getElementById('spy-settings');
+      if (!settings.children.length) spyRenderSettings(counts);
+      else {
+        SPY_ITEMS.forEach(it => {
+          const input = document.getElementById(`count-${it.key}`);
+          if (input) input.value = String(counts[it.key] ?? 0);
+        });
+      }
+
+      spyBuildFooter(counts);
+
+      // Build flat list and shuffle
+      const instances = SPY_ITEMS.flatMap(item => Array.from({ length: counts[item.key] || 0 }, () => ({ item })));
+      shuffle(instances);
+
+      // Compute grid size close to square
+      const total = instances.length;
+      const cols = Math.max(1, Math.ceil(Math.sqrt(total)));
+      const rows = Math.max(1, Math.ceil(total / cols));
+
+      // Create table and fill cells
+      const table = document.createElement('table');
+      table.className = 'play-table';
+      const tbody = document.createElement('tbody');
+      let index = 0;
+      for (let r = 0; r < rows; r++) {
+        const tr = document.createElement('tr');
+        for (let c = 0; c < cols; c++) {
+          const td = document.createElement('td');
+          if (index < total) {
+            const { item } = instances[index++];
+            const wrapper = document.createElement('div');
+            wrapper.className = 'cell-icon';
+            const deg = choice([0, 0, 0, 5, -5]);
+            wrapper.style.transform = `rotate(${deg}deg)`;
+            wrapper.innerHTML = item.svg(item.color);
+            td.appendChild(wrapper);
+          }
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      playfield.appendChild(table);
+    }
+
+    // Первая буква заглавная
+    function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    // ==================== КАРТОЧКИ (Singular/Plural) ====================
+    // Определения предметов: артикль для единственного числа, название, цвет и SVG
+    const PAIR_ITEMS = [
+      { key: 'chair',  name: 'chair',  article: 'a',  color: '#10b981', svg: svgChair },
+      { key: 'table',  name: 'table',  article: 'a',  color: '#f59e0b', svg: svgTable },
+      { key: 'pen',    name: 'pen',    article: 'a',  color: '#3b82f6', svg: svgPen },
+      { key: 'pencil', name: 'pencil', article: 'a',  color: '#ef4444', svg: svgPencil },
+      { key: 'ruler',  name: 'ruler',  article: 'a',  color: '#eab308', svg: svgRuler },
+      { key: 'eraser', name: 'eraser', article: 'an', color: '#ec4899', svg: svgEraser },
+    ];
+
+    // Значения по умолчанию для правых карточек (количество)
+    const PAIRS_DEFAULT_COUNTS = { chair: 5, table: 2, pen: 4, pencil: 7, ruler: 3, eraser: 8 };
+
+    // Подписи под карточками
+    function pairsSingularLabel(item) { return `${item.article} ${item.name}`; }
+    function pairsPluralLabel(item, count) { return `${count} ${item.name}${count === 1 ? '' : 's'}`; }
+
+    // Рендерит настройки количест для карточек
+    function pairsRenderSettings(counts) {
+      const settings = document.getElementById('pairs-settings');
+      settings.innerHTML = '';
+      PAIR_ITEMS.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'cfg-item';
+        const value = counts[item.key] ?? PAIRS_DEFAULT_COUNTS[item.key] ?? 1;
+        el.innerHTML = `
+          <span class="mini" aria-hidden="true">${item.svg(item.color)}</span>
+          <label class="label" for="pairs-count-${item.key}">${capitalize(item.name)}</label>
+          <input id="pairs-count-${item.key}" type="number" min="0" max="99" value="${value}" />
+        `;
+        settings.appendChild(el);
+      });
+    }
+
+    // Считывает количества из DOM-настроек карточек
+    function pairsGetCountsFromSettings() {
+      const map = {};
+      for (const item of PAIR_ITEMS) {
+        const input = document.getElementById(`pairs-count-${item.key}`);
+        if (!input) return null;
+        const v = parseInt(input.value, 10);
+        map[item.key] = Number.isFinite(v) && v >= 0 ? v : 0;
+      }
+      return map;
+    }
+
+    // Рендерит 6 пар карточек по текущим настройкам
+    function renderPairs(counts) {
+      const pairsContainer = document.getElementById('pairs');
+      const settings = document.getElementById('pairs-settings');
+      if (!counts) counts = pairsGetCountsFromSettings() || { ...PAIRS_DEFAULT_COUNTS };
+      if (!settings.children.length) pairsRenderSettings(counts);
+      else {
+        PAIR_ITEMS.forEach(it => {
+          const input = document.getElementById(`pairs-count-${it.key}`);
+          if (input) input.value = String(counts[it.key] ?? 0);
+        });
+      }
+      pairsContainer.innerHTML = '';
+      for (const p of PAIR_ITEMS) {
+        const count = counts[p.key] ?? 0;
+        const row = document.createElement('div');
+        row.className = 'pair';
+        const left = document.createElement('article');
+        left.className = 'card';
+        left.innerHTML = `
+          <div class="visual single" aria-hidden="true">${p.svg(p.color)}</div>
+          <div class="label">${pairsSingularLabel(p)}</div>
+        `;
+        const right = document.createElement('article');
+        right.className = 'card';
+        const grid = document.createElement('div');
+        grid.className = 'visual grid';
+        for (let i = 0; i < count; i++) {
+          const cell = document.createElement('div');
+          cell.className = 'mini';
+          cell.innerHTML = p.svg(p.color);
+          grid.appendChild(cell);
+        }
+        const rightLabel = document.createElement('div');
+        rightLabel.className = 'label';
+        rightLabel.textContent = pairsPluralLabel(p, count);
+        right.appendChild(grid);
+        right.appendChild(rightLabel);
+        row.appendChild(left);
+        row.appendChild(right);
+        pairsContainer.appendChild(row);
+      }
+    }
+
+    // ===== Инициализация страницы =====
+    window.addEventListener('load', () => {
+      switchTool(selectTool.value);
+      regenerate();
+    });
+
+    window.addEventListener('resize', debounce(() => {
+      regenerate();
+    }, 150));
+
+    // Простой debounce для стабилизации перерендеров
+    function debounce(fn, ms) {
+      let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), ms); };
+    }
+  </script>
+</body>
+</html>
+
+
